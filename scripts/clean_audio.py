@@ -122,11 +122,13 @@ while True:
         print("Processing complete!")
         break
     
-    # Status 4 is "Audio Processing" - still in progress, not a failure
-    if status in [1, 2, 4]:  # Waiting, Processing, Audio Processing
+    # Status codes for processing (continue waiting):
+    # 1=Waiting, 4=Audio Processing, 5=Audio Encoding, 6=Outgoing File Transfer, 
+    # 7=Audio Mono Mixdown, 8=Split Audio On Chapter Marks, 12=Incoming File Transfer, 14=Speech Recognition
+    if status in [1, 4, 5, 6, 7, 8, 12, 14]:  # Processing statuses - continue waiting
         # Continue waiting
         pass
-    elif status == 5:  # This would be an actual error status
+    elif status == 2:  # Status 2 is the actual error status
         print("Processing failed! Getting detailed error information...")
         details_resp = requests.get(f"{BASE_URL}/production/{production_uuid}.json", headers=headers)
         if details_resp.status_code != 200:
