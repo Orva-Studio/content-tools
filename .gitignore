@@ -1,0 +1,8 @@
+# Ignore subtitle files
+*.srt
+
+# Ignore Claude directory
+.claude/
+
+# Ignore Crush directory
+.crush/

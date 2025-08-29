@@ -8,7 +8,6 @@ Inputs
 • Optional:
  • working_title: a short draft title to influence style/angle.
 
-
 Behavior
 
 • Parse transcript (.srt or .txt). Strip timestamps/indices; normalize text.
@@ -34,19 +33,21 @@ Description Generation (after user picks a number)
  • Soft CTA (watch next/like/subscribe) without hype.
 
 
-Angles To Use
+Angles To Use (curiosity-forward)
 
-• Rotate/mix: Insider Information, Authority, Beginners, Timeliness, Regrets, Trend Jacking, Numbers, Contrast, Counterintuitive, Superlatives, Impossible Challenge, Challenging Convention, Extreme, Ask a Question, Exciting Journey, List.
+• Rotate/mix: Why/How-led curiosity, Insider Information, Authority, Timeliness, Regrets, Trend Jacking, Contrast, Counterintuitive, Superlatives, Challenging Convention, Ask a Question, Numbers. Favor “Why” and “How” starts; weave short parentheticals sparingly.
 
 Title Principles
 
-• Start strong: “Why”, “How”, “What”, “The”, “No”, “End”, “Perfect”.
+• Start strong: “Why”, “How” (prioritize these), then “What”, “The”, “No”, “End”, “Perfect”.
 • Bold but honest: “Explained”, “Hidden Truth”, “Best Time”, “In Trouble”.
 • Specific yet broad: concrete tech/topic + value hook.
 • Numbers when natural (5, 7, 10, 20).
 • Ethical emotion: “Easy”, “Fast”, “Trouble”, “Wow”, “Perfect”.
 • Trend-aware when transcript suggests it.
 • Brevity: aim <10 words; enforce the short-group length limit.
+ • Optional parenthetical: Append a very short 2–3 word curiosity tag in parens to some titles (not all). Examples: “(RIP Claude Code)”, “(UX trick)”, “(Tiny detail)”, “(Screenshot inside)”, “(Not themes)”, “(Secret sauce)”, “(Design
+ win)”, “(Side‑by‑side)”. Use sparingly: 6–10 across all 30 titles, spread across sections. Keep each on one line.
 
 Output Formatting (strict)
 
@@ -56,8 +57,9 @@ Output Formatting (strict)
 • Exactly one blank line between sections; no inline content after headers.
 • Keep each title to a single physical line; shorten if needed.
 • Do not use commas/semicolons/em-dashes to separate multiple titles.
+• If a parenthetical is used, place it at the end of the title, single set of parentheses, 2–3 words, no commas/em‑dashes. For the short-title group, still enforce ≤60 characters total including the parenthetical.
 
-Sections and layout Technical (#1–#10)
+Sections and layout Clickbait/Curiosity-First (#1–#20)
 
 • #1 \n
 • #2 \n
@@ -69,9 +71,6 @@ Sections and layout Technical (#1–#10)
 • #8 \n
 • #9 \n
 • #10 \n
-
-Clickbait/Elevated Curiosity (#11–#20)
-
 • #11 \n
 • #12 \n
 • #13 \n
@@ -120,3 +119,23 @@ CLI Usage
 
 • Minimal: ai run YOUTUBE_TITLE.md /path/video.srt
 • With working title: ai run YOUTUBE_TITLE.md /path/video.srt "working_title=My Draft Angle"
+
+Timestamps in Descriptions (append)
+
+• When generating the one‑paragraph description, also include the chosen chapter timestamps formatted as short chapter lines suitable for YouTube (one per line) immediately after the paragraph.
+• Timestamp format: `MM:SS` or `HH:MM` (no milliseconds), concise titles, one line each (e.g., `00:00 — GPT‑5 & coding claims`).
+• Keep chapter lines brief and in the detected language; do not add extra commentary.
+
+Example:
+
+120–180 word paragraph...
+
+📌 Chapters:
+00:00 GPT‑5 & coding claims
+00:11 Benchmarks overview
+00:20 SWE‑Bench
+01:47 Aider PolyGOT
+02:38 LiveCodeBench overview
+03:29 Why user experiences differ
+03:51 GPT‑5’s routing system explained
+04:32 Other benchmarks & data limits
