@@ -304,4 +304,6 @@ Contributions are welcome! When adding new tools:
 
 ## License
 
-This project is for personal/educational use. Please respect API terms of service for external services (Auphonic, etc.).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+**Note:** Please respect the API terms of service for external services used by these tools (Auphonic, etc.). The MIT license applies to the code in this repository, not to third-party services.
