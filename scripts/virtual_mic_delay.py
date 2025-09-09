@@ -11,77 +11,211 @@ import argparse
 import sys
 import threading
 import time
+from typing import Optional
+import signal
+import atexit
 
-def virtual_microphone_delay(delay_ms=200, sample_rate=44100, chunk_size=1024, 
-                           input_device=None, output_device=None):
-    """
-    Create virtual microphone with delayed audio
-    
+
+def _get_device_name(device_index: Optional[int], direction: str = "input") -> str:
+    """Return human-readable device name for a given index.
+
+    If ``device_index`` is ``None``, attempts to resolve the default device
+    name for the given ``direction`` ("input" or "output"). Falls back to
+    "Default" if not available. If the index is invalid, returns a safe
+    placeholder containing the index.
+
     Args:
-        delay_ms: Delay in milliseconds
-        sample_rate: Audio sample rate (Hz)
-        chunk_size: Audio buffer size
-        input_device: Physical microphone device index
-        output_device: Virtual audio device index (like VB-Cable)
+        device_index: PyAudio device index or None for default.
+        direction: "input" or "output" to resolve default device when needed.
+
+    Returns:
+        The device name string.
     """
-    # Calculate buffer size needed for delay
-    delay_samples = int(delay_ms * sample_rate / 1000)
-    
-    # Circular buffer for delay
-    delay_buffer = deque([0.0] * delay_samples, maxlen=delay_samples)
-    
     p = pyaudio.PyAudio()
-    
-    def process_audio():
-        """Process audio in separate thread"""
+    try:
+        if device_index is None:
+            try:
+                info = (
+                    p.get_default_input_device_info()
+                    if direction == "input"
+                    else p.get_default_output_device_info()
+                )
+                return info.get("name", "Default")
+            except Exception:
+                return "Default"
+        # Specific index provided
         try:
+            info = p.get_device_info_by_index(device_index)
+            return info.get("name", f"Device {device_index}")
+        except Exception:
+            return f"Device {device_index}"
+    finally:
+        p.terminate()
+
+
+def _get_default_device_index(direction: str = "input") -> Optional[int]:
+    """Return the default device index for the given direction if available.
+
+    Args:
+        direction: "input" or "output".
+
+    Returns:
+        The device index or None if not available.
+    """
+    p = pyaudio.PyAudio()
+    try:
+        try:
+            info = (
+                p.get_default_input_device_info()
+                if direction == "input"
+                else p.get_default_output_device_info()
+            )
+            return int(info.get("index")) if "index" in info else None
+        except Exception:
+            return None
+    finally:
+        p.terminate()
+
+class VirtualMicrophone:
+    """Virtual microphone with proper cleanup and thread management"""
+    
+    def __init__(self, delay_ms=200, sample_rate=44100, chunk_size=1024,
+                 input_device=None, output_device=None):
+        self.delay_ms = delay_ms
+        self.sample_rate = sample_rate
+        self.chunk_size = chunk_size
+        self.input_device = input_device
+        self.output_device = output_device
+        
+        # Threading control
+        self._stop_event = threading.Event()
+        self._audio_thread = None
+        
+        # Audio components
+        self._pa = None
+        self._input_stream = None
+        self._output_stream = None
+        
+        # Calculate buffer size needed for delay
+        delay_samples = int(delay_ms * sample_rate / 1000)
+        self._delay_buffer = deque([0.0] * delay_samples, maxlen=delay_samples)
+    
+    def _process_audio(self):
+        """Process audio in separate thread with proper cleanup"""
+        try:
+            self._pa = pyaudio.PyAudio()
+            
             # Input stream (physical microphone)
-            input_stream = p.open(
+            self._input_stream = self._pa.open(
                 format=pyaudio.paFloat32,
                 channels=1,
-                rate=sample_rate,
+                rate=self.sample_rate,
                 input=True,
-                frames_per_buffer=chunk_size,
-                input_device_index=input_device
+                frames_per_buffer=self.chunk_size,
+                input_device_index=self.input_device
             )
             
             # Output stream (virtual audio device)
-            output_stream = p.open(
+            self._output_stream = self._pa.open(
                 format=pyaudio.paFloat32,
                 channels=1,
-                rate=sample_rate,
+                rate=self.sample_rate,
                 output=True,
-                frames_per_buffer=chunk_size,
-                output_device_index=output_device
+                frames_per_buffer=self.chunk_size,
+                output_device_index=self.output_device
             )
             
             print("🎤 Virtual microphone active - audio processing started")
             
-            while True:
-                # Read from physical microphone
-                input_data = input_stream.read(chunk_size, exception_on_overflow=False)
-                input_audio = np.frombuffer(input_data, dtype=np.float32)
-                
-                # Process through delay buffer
-                output_audio = np.zeros_like(input_audio)
-                for i, sample in enumerate(input_audio):
-                    delay_buffer.append(sample)
-                    output_audio[i] = delay_buffer[0]
-                
-                # Write to virtual audio device
-                output_stream.write(output_audio.tobytes())
-                
+            while not self._stop_event.is_set():
+                try:
+                    # Read from physical microphone with timeout
+                    input_data = self._input_stream.read(
+                        self.chunk_size, 
+                        exception_on_overflow=False
+                    )
+                    
+                    if self._stop_event.is_set():
+                        break
+                        
+                    input_audio = np.frombuffer(input_data, dtype=np.float32)
+                    
+                    # Process through delay buffer
+                    output_audio = np.zeros_like(input_audio)
+                    for i, sample in enumerate(input_audio):
+                        self._delay_buffer.append(sample)
+                        output_audio[i] = self._delay_buffer[0]
+                    
+                    # Write to virtual audio device
+                    if not self._stop_event.is_set():
+                        self._output_stream.write(output_audio.tobytes())
+                        
+                except Exception as e:
+                    if not self._stop_event.is_set():
+                        print(f"❌ Audio processing error: {e}")
+                    break
+                    
         except Exception as e:
-            print(f"❌ Audio processing error: {e}")
+            print(f"❌ Failed to initialize audio streams: {e}")
         finally:
-            if 'input_stream' in locals():
-                input_stream.stop_stream()
-                input_stream.close()
-            if 'output_stream' in locals():
-                output_stream.stop_stream()
-                output_stream.close()
+            self._cleanup_streams()
     
-    return process_audio, p
+    def _cleanup_streams(self):
+        """Safely cleanup audio streams and PyAudio instance"""
+        try:
+            if self._input_stream:
+                try:
+                    self._input_stream.stop_stream()
+                    self._input_stream.close()
+                except Exception:
+                    pass  # Ignore errors during cleanup
+                self._input_stream = None
+                
+            if self._output_stream:
+                try:
+                    self._output_stream.stop_stream()
+                    self._output_stream.close()
+                except Exception:
+                    pass  # Ignore errors during cleanup
+                self._output_stream = None
+                
+            if self._pa:
+                try:
+                    self._pa.terminate()
+                except Exception:
+                    pass  # Ignore errors during cleanup
+                self._pa = None
+                
+        except Exception:
+            pass  # Ignore any cleanup errors
+    
+    def start(self):
+        """Start the virtual microphone"""
+        if self._audio_thread and self._audio_thread.is_alive():
+            return False
+            
+        self._stop_event.clear()
+        self._audio_thread = threading.Thread(
+            target=self._process_audio,
+            name="AudioProcessor",
+            daemon=False  # Don't use daemon threads
+        )
+        self._audio_thread.start()
+        return True
+    
+    def stop(self):
+        """Stop the virtual microphone cleanly"""
+        if self._audio_thread and self._audio_thread.is_alive():
+            self._stop_event.set()
+            self._audio_thread.join(timeout=2.0)  # Wait max 2 seconds
+            if self._audio_thread.is_alive():
+                print("⚠️ Audio thread did not stop cleanly")
+        
+        self._cleanup_streams()
+    
+    def is_running(self):
+        """Check if the virtual microphone is running"""
+        return self._audio_thread and self._audio_thread.is_alive() and not self._stop_event.is_set()
 
 def find_virtual_devices():
     """Find virtual audio devices like VB-Cable"""
@@ -173,7 +307,7 @@ def main():
                     print(f"   Device {device_id}: {name}")
                     if args.output_device is None:
                         args.output_device = device_id
-                        print(f"   → Using device {device_id} as output")
+                        print(f"   → Using '{name}' as output (ID: {device_id})")
                         break
         
         if args.output_device is None:
@@ -190,8 +324,18 @@ def main():
         sys.exit(1)
     
     print(f"🎤 Setting up virtual microphone")
-    print(f"   Input device: {args.input_device or 'Default'}")
-    print(f"   Output device: {args.output_device}")
+    input_name = _get_device_name(args.input_device, direction="input")
+    output_name = _get_device_name(args.output_device, direction="output")
+    input_id = (
+        args.input_device
+        if args.input_device is not None
+        else _get_default_device_index("input")
+    )
+    output_id = args.output_device
+    input_id_label = str(input_id) if input_id is not None else "Default"
+    output_id_label = str(output_id) if output_id is not None else "Default"
+    print(f"   Input device: {input_name} (ID: {input_id_label})")
+    print(f"   Output device: {output_name} (ID: {output_id_label})")
     print(f"   Delay: {args.delay}ms")
     print(f"   Sample rate: {args.rate}Hz")
     print(f"   Buffer size: {args.buffer}")
@@ -202,8 +346,8 @@ def main():
     print("Press Ctrl+C to stop")
     print()
     
-    # Create virtual microphone
-    process_func, pa = virtual_microphone_delay(
+    # Create and configure virtual microphone
+    virtual_mic = VirtualMicrophone(
         delay_ms=args.delay,
         sample_rate=args.rate,
         chunk_size=args.buffer,
@@ -211,21 +355,39 @@ def main():
         output_device=args.output_device
     )
     
-    # Start processing in background thread
-    audio_thread = threading.Thread(target=process_func, daemon=True)
-    audio_thread.start()
+    # Set up signal handlers for clean shutdown
+    def signal_handler(signum, frame):
+        print("\n🛑 Stopping virtual microphone...")
+        virtual_mic.stop()
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    # Register cleanup function
+    atexit.register(virtual_mic.stop)
     
     try:
-        # Keep main thread alive
-        while audio_thread.is_alive():
+        # Start the virtual microphone
+        if not virtual_mic.start():
+            print("❌ Failed to start virtual microphone")
+            sys.exit(1)
+        
+        # Keep main thread alive while virtual microphone is running
+        while virtual_mic.is_running():
             time.sleep(0.1)
+            
+        print("✅ Virtual microphone stopped")
+        
     except KeyboardInterrupt:
         print("\n🛑 Stopping virtual microphone...")
+        virtual_mic.stop()
+        print("✅ Virtual microphone stopped")
     except Exception as e:
         print(f"\n❌ Error: {e}")
-    finally:
-        pa.terminate()
+        virtual_mic.stop()
         print("✅ Virtual microphone stopped")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

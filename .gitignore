@@ -6,3 +6,6 @@
 
 # Ignore Crush directory
 .crush/
+
+# Ignore pycache file
+__pycache__/
