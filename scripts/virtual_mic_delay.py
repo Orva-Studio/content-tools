@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Virtual Microphone Audio Delay Tool
-Creates a virtual microphone with delayed audio for recording software like Camtasia
+Cuca: Virtual Microphone Audio Delay Tool
+Creates a virtual microphone with delayed audio for recording software like your recording software
 """
 
 import pyaudio
@@ -10,7 +10,7 @@ from collections import deque
 import sys
 import threading
 import time
-from typing import Optional, List, Tuple
+from typing import Optional, List 
 import signal
 import atexit
 
@@ -499,8 +499,23 @@ def interactive_main():
             lambda d: d['outputs'] > 0
         )
         
-        if output_device_id is None:
+    if output_device_id is None:
             return
+    
+    # Get delay value from user with default of 140
+    while True:
+        try:
+            delay_input = input("Enter delay in milliseconds (default: 140): ").strip()
+            if not delay_input:
+                delay_ms = 140
+                break
+            delay_ms = int(delay_input)
+            if delay_ms < 0:
+                print("❌ Delay must be positive")
+                continue
+            break
+        except ValueError:
+            print("❌ Please enter a valid number or press Enter for default")
     
     print()
     print("📋 Configuration Summary:")
@@ -513,7 +528,7 @@ def interactive_main():
     config_lines = [
         f"Input device:  {input_device['name']} (ID: {input_device_id})",
         f"Output device: {output_device['name']} (ID: {output_device_id})",
-        f"Delay:         140ms",
+        f"Delay:         {delay_ms}ms",
         f"Sample rate:   44100 Hz",
         f"Buffer size:   1024"
     ]
@@ -535,14 +550,14 @@ def interactive_main():
     
     print()
     print("🔧 Starting virtual microphone...")
-    print("📹 In Camtasia, select the virtual audio device as your microphone")
+    print("📹 In your recording software, select the virtual audio device as your microphone")
     print("🎯 The delayed audio will be available for recording")
     print("Press Ctrl+C to stop")
     print()
     
     # Create and configure virtual microphone
     virtual_mic = VirtualMicrophone(
-        delay_ms=140,
+        delay_ms=delay_ms,
         sample_rate=44100,
         chunk_size=1024,
         input_device=input_device_id,
@@ -663,8 +678,8 @@ def main():
     print(f"   Sample rate: {args.rate}Hz")
     print(f"   Buffer size: {args.buffer}")
     print()
-    print("🔧 This creates a virtual microphone that Camtasia can select")
-    print("📹 In Camtasia, select the virtual audio device as your microphone")
+    print("🔧 This creates a virtual microphone that your recording software can select")
+    print("📹 In your recording software, select the virtual audio device as your microphone")
     print("🎯 The delayed audio will be available for recording")
     print("Press Ctrl+C to stop")
     print()
