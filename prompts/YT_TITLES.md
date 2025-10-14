@@ -24,13 +24,14 @@ Description Generation (after user picks a number)
 
 • Length: 120–180 words in the detected language.
 • SEO keywords:
- • Identify 6–10 primary/secondary keywords from transcript + chosen title (frameworks, concepts, versions, tools, use cases).
- • Weave them naturally; avoid keyword stuffing.
+  • Identify 6–10 primary/secondary keywords from transcript + chosen title (frameworks, concepts, versions, tools, use cases).
+  • Weave them naturally; avoid keyword stuffing.
 • Content:
- • Hook tied to the chosen title.
- • What viewers learn: concrete topics, techniques, tools, versions.
- • Who it’s for: align with short, educational, informative intent.
- • Soft CTA (watch next/like/subscribe) without hype.
+  • Start with the main tool/topic being discussed (not "Discover" or similar intros).
+  • Use simple 4th-grade language (short sentences, easy words).
+  • What viewers learn: concrete topics, techniques, tools, versions.
+  • Who it's for: align with short, educational, informative intent.
+  • Soft CTA (watch next/like/subscribe) without hype.
 
 
 Angles To Use (curiosity-forward)
