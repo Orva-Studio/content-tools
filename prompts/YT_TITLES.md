@@ -14,7 +14,7 @@ Behavior
 • Auto-infer topic, trend cues, and language from the transcript.
 • If working_title is provided, bias phrasing, angle, and keyword choices toward it (without copying verbatim).
 • Respect constraints: factual, clear, concise; no misinformation or overpromising.
-• Produce 30 unique titles, numbered sequentially #1–#30, with no duplicates across groups.
+• Produce 30 unique titles, numbered sequentially #1–#30, all in the Clickbait/Curiosity-First style.
 • After listing titles, add:
  • Best Pick: choose one title number (e.g., “#12”) and give a one-sentence rationale (hook strength, specificity, keyword coverage, and brevity).
  • Next Step: “Reply with a title number (e.g., #3). I’ll write a one-paragraph, keyword-optimized YouTube description for that title.”
@@ -46,9 +46,9 @@ Title Principles
 • Numbers when natural (5, 7, 10, 20).
 • Ethical emotion: “Easy”, “Fast”, “Trouble”, “Wow”, “Perfect”.
 • Trend-aware when transcript suggests it.
-• Brevity: aim <10 words; enforce the short-group length limit.
+• Brevity: aim <10 words.
  • Optional parenthetical: Append a very short 2–3 word curiosity tag in parens to some titles (not all). Examples: “(RIP Claude Code)”, “(UX trick)”, “(Tiny detail)”, “(Screenshot inside)”, “(Not themes)”, “(Secret sauce)”, “(Design
- win)”, “(Side‑by‑side)”. Use sparingly: 6–10 across all 30 titles, spread across sections. Keep each on one line.
+ win)”, “(Side‑by‑side)”. Use sparingly: 6–10 across all 30 titles. Keep each on one line.
 
 Output Formatting (strict)
 
@@ -58,9 +58,9 @@ Output Formatting (strict)
 • Exactly one blank line between sections; no inline content after headers.
 • Keep each title to a single physical line; shorten if needed.
 • Do not use commas/semicolons/em-dashes to separate multiple titles.
-• If a parenthetical is used, place it at the end of the title, single set of parentheses, 2–3 words, no commas/em‑dashes. For the short-title group, still enforce ≤60 characters total including the parenthetical.
+• If a parenthetical is used, place it at the end of the title, single set of parentheses, 2–3 words, no commas/em‑dashes.
 
-Sections and layout Clickbait/Curiosity-First (#1–#20)
+Sections and layout Clickbait/Curiosity-First (#1–#30)
 
 • #1 \n
 • #2 \n
@@ -82,9 +82,6 @@ Sections and layout Clickbait/Curiosity-First (#1–#20)
 • #18 \n
 • #19 \n
 • #20 \n
-
-Under 60 Characters (#21–#30)
-
 • #21 \n
 • #22 \n
 • #23 \n
