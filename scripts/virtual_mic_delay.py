@@ -13,6 +13,41 @@ import time
 from typing import Optional, List 
 import signal
 import atexit
+import subprocess
+import platform
+
+
+def show_macos_alert(title: str, message: str, alert_type: str = "warning"):
+    """Show a macOS alert dialog using osascript"""
+    if platform.system() != "Darwin":
+        return False
+    
+    try:
+        # Escape quotes in title and message
+        escaped_title = title.replace('"', '\\"')
+        escaped_message = message.replace('"', '\\"')
+        
+        # Determine alert type icon
+        icon_map = {
+            "warning": "caution",
+            "error": "stop", 
+            "info": "note"
+        }
+        icon = icon_map.get(alert_type.lower(), "caution")
+        
+        # Create osascript command
+        script = f'''
+        tell application "System Events"
+            display dialog "{escaped_message}" with title "{escaped_title}" buttons {{"OK"}} default button "OK" with icon {icon}
+        end tell
+        '''
+        
+        # Execute the script
+        subprocess.run(['osascript', '-e', script], 
+                      capture_output=True, timeout=10, check=True)
+        return True
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
+        return False
 
 
 def _get_device_name(device_index: Optional[int], direction: str = "input") -> str:
@@ -77,10 +112,46 @@ class VirtualMicrophone:
         self._input_stream = None
         self._output_stream = None
         
+        # Device monitoring
+        self._device_check_interval = 2.0  # Check every 2 seconds
+        self._last_device_check = 0
+        self._last_alert_time = 0  # Track last alert to avoid spamming
+        self._alert_cooldown = 30.0  # Wait 30 seconds between alerts
+        
         # Calculate buffer size needed for delay
         delay_samples = max(1, int(delay_ms * sample_rate / 1000))
         buffer_list = [0.0] * delay_samples
         self._delay_buffer = deque(buffer_list, maxlen=int(delay_samples))
+    
+    def _get_input_device_name(self) -> str:
+        """Get the name of the input device"""
+        if self.input_device is None:
+            return "Default Device"
+        
+        try:
+            if not self._pa:
+                self._pa = pyaudio.PyAudio()
+            device_info = self._pa.get_device_info_by_index(self.input_device)
+            return str(device_info.get('name', f'Device {self.input_device}'))
+        except Exception:
+            return f'Device {self.input_device}'
+    
+    def _check_input_device_available(self) -> bool:
+        """Check if the input device is still available"""
+        if self.input_device is None:
+            return True  # Default device, assume available
+        
+        try:
+            if not self._pa:
+                self._pa = pyaudio.PyAudio()
+            
+            # Try to get device info - will fail if device is disconnected
+            device_info = self._pa.get_device_info_by_index(self.input_device)
+            # Check if device has input channels
+            max_input_channels = int(device_info.get('maxInputChannels', 0))
+            return max_input_channels > 0
+        except Exception:
+            return False
     
     def _process_audio(self):
         """Process audio in separate thread with proper cleanup"""
@@ -111,6 +182,25 @@ class VirtualMicrophone:
             
             while not self._stop_event.is_set():
                 try:
+                    # Check if input device is still available (every 2 seconds)
+                    current_time = time.time()
+                    if current_time - self._last_device_check > self._device_check_interval:
+                        self._last_device_check = current_time
+                        if not self._check_input_device_available():
+                            device_name = self._get_input_device_name()
+                            print(f"⚠️ WARNING: Microphone '{device_name}' has been disconnected!")
+                            print("🔧 Please reconnect your microphone or restart the application")
+                            print("🛑 Continuing with silence until device is reconnected...")
+                            
+                            # Show macOS alert if enough time has passed since last alert
+                            if current_time - self._last_alert_time > self._alert_cooldown:
+                                show_macos_alert(
+                                    "Microphone Disconnected",
+                                    f"The microphone '{device_name}' has been disconnected. Please reconnect it or restart the application.",
+                                    "warning"
+                                )
+                                self._last_alert_time = current_time
+                    
                     # Read from physical microphone with timeout
                     input_data = self._input_stream.read(
                         self.chunk_size, 
@@ -134,7 +224,24 @@ class VirtualMicrophone:
                         
                 except Exception as e:
                     if not self._stop_event.is_set():
-                        print(f"❌ Audio processing error: {e}")
+                        # Check if this is a device disconnection error
+                        if "device" in str(e).lower() or "unavailable" in str(e).lower():
+                            device_name = self._get_input_device_name()
+                            print(f"⚠️ WARNING: Microphone '{device_name}' appears to be disconnected!")
+                            print("🔧 Please check your microphone connection")
+                            print("🔄 Attempting to continue...")
+                            
+                            # Show macOS alert for device errors
+                            current_time = time.time()
+                            if current_time - self._last_alert_time > self._alert_cooldown:
+                                show_macos_alert(
+                                    "Microphone Error",
+                                    f"The microphone '{device_name}' is not responding. Please check the connection.",
+                                    "error"
+                                )
+                                self._last_alert_time = current_time
+                        else:
+                            print(f"❌ Audio processing error: {e}")
                     break
                     
         except Exception as e:
@@ -618,8 +725,27 @@ def main():
                        help='List available audio devices and exit')
     parser.add_argument('--auto-detect', action='store_true',
                        help='Auto-detect virtual audio devices')
+    parser.add_argument('--test-alert', action='store_true',
+                       help='Test macOS alert functionality')
     
     args = parser.parse_args()
+    
+    # Test alert functionality if requested
+    if args.test_alert:
+        if platform.system() == "Darwin":
+            print("🧪 Testing macOS alert functionality...")
+            success = show_macos_alert(
+                "Test Alert",
+                "This is a test alert from the Virtual Microphone Delay tool. If you see this, alerts are working correctly!",
+                "info"
+            )
+            if success:
+                print("✅ Alert test successful!")
+            else:
+                print("❌ Alert test failed - osascript may not be available")
+        else:
+            print("⚠️ macOS alerts are only available on macOS")
+        return
     
     # If no arguments provided, run interactive mode
     if len(sys.argv) == 1:

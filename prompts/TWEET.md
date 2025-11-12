@@ -8,4 +8,4 @@ Requirements:
 - Mention it feels like magic for building applications
 - Keep tone excited and conversational
 - Single paragraph format
-- Add CHARACTER COUNT: xxx at the end (must be accurate and under 240, use | wc -c to verify)
+- Must be under 240 characters (use | wc -c to verify)

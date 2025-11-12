@@ -34,10 +34,6 @@ Description Generation (after user picks a number)
   • Soft CTA (watch next/like/subscribe) without hype.
 
 
-Angles To Use (curiosity-forward)
-
-• Rotate/mix: Why/How-led curiosity, Insider Information, Authority, Timeliness, Regrets, Trend Jacking, Contrast, Counterintuitive, Superlatives, Challenging Convention, Ask a Question, Numbers. Favor “Why” and “How” starts; weave short parentheticals sparingly.
-
 Title Principles
 
 • Start strong: “Why”, “How” (prioritize these), then “What”, “The”, “No”, “End”, “Perfect”.
