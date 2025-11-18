@@ -224,8 +224,19 @@ class VirtualMicrophone:
                         
                 except Exception as e:
                     if not self._stop_event.is_set():
-                        # Check if this is a device disconnection error
-                        if "device" in str(e).lower() or "unavailable" in str(e).lower():
+                        error_str = str(e).lower()
+                        # Check if this is a device disconnection or PortAudio/AUHAL error
+                        is_device_error = (
+                            "device" in error_str or 
+                            "unavailable" in error_str or
+                            "pamaccore" in error_str or
+                            "auhal" in error_str or
+                            "audio unit" in error_str or
+                            "-10863" in error_str or
+                            "cannot do in current context" in error_str
+                        )
+                        
+                        if is_device_error:
                             device_name = self._get_input_device_name()
                             print(f"⚠️ WARNING: Microphone '{device_name}' appears to be disconnected!")
                             print("🔧 Please check your microphone connection")
