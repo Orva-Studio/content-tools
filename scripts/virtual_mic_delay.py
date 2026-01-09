@@ -620,12 +620,12 @@ def interactive_main():
     if output_device_id is None:
             return
     
-    # Get delay value from user with default of 140
+    # Get delay value from user with default of 150
     while True:
         try:
-            delay_input = input("Enter delay in milliseconds (default: 140): ").strip()
+            delay_input = input("Enter delay in milliseconds (default: 150): ").strip()
             if not delay_input:
-                delay_ms = 140
+                delay_ms = 150
                 break
             delay_ms = int(delay_input)
             if delay_ms < 0:
@@ -722,8 +722,8 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='Virtual microphone with audio delay')
-    parser.add_argument('-d', '--delay', type=int, default=140,
-                       help='Delay in milliseconds (default: 140ms)')
+    parser.add_argument('-d', '--delay', type=int, default=150,
+                       help='Delay in milliseconds (default: 150ms)')
     parser.add_argument('-r', '--rate', type=int, default=44100,
                        help='Sample rate in Hz (default: 44100)')
     parser.add_argument('-b', '--buffer', type=int, default=1024,
