@@ -1,12 +1,14 @@
-Write a compelling tweet summarizing this YouTube description under 210 characters without emojis or hashtags.
+Option 1:
+Agent Browser lets AI agents control browsers through simple commands like open, click and fill. How much time could this save your automation projects?
 
-Requirements:
-- Maximum 210 characters (use | wc -c to verify)
-- Explain what the tool/technique does clearly
-- End with a question about a practical concern that makes readers want to learn more:
-  - Cost/price concerns (will it break my budget, will it bankrupt my project, etc.)
-  - Naming/origin questions (why is it named after X character, etc.)
-  - Sustainability issues (will the infinite API calls become unsustainable, etc.)
-- Keep tone informative but create genuine curiosity
-- Simple, conversational English with short sentences
-- No obvious clickbait - the concern should feel legitimate
+Option 2:
+Built in a weekend, Agent Browser combines Rust speed with Node.js to give AI agents browser automation. What would you build with this tool?
+
+Option 3:
+Agent Browser uses a unique ref-based system for AI-friendly element selection. How could this improve your web automation workflow?
+
+Option 4:
+Agent Browser integrates seamlessly with Claude Code and other AI agents for browser automation. What new applications could you create?
+
+Option 5:
+Agent Browser gives AI agents complete browser control through multiple engines. What's the next big thing you could automate?
