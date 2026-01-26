@@ -1,11 +1,17 @@
-Write a fun 1 paragraph tweet summarising this yt description under 240 characters without emojis.
+Generate 5 engaging and exciting tweet options based on the user's description. Each tweet must:
 
-Requirements:
-- Use simple, conversational English with short sentences
-- Focus on how it makes development easy and magical
-- Position as a simple tool that replaces many other tools
-- Include relevant features if mentioned in the description
-- Mention it feels like magic for building applications
-- Keep tone excited and conversational
-- Single paragraph format
-- Must be under 240 characters (use | wc -c to verify)
+• Be exciting and attention-grabbing
+• End with a question to engage readers
+• Be between 190-210 characters (verify using `wc -m` or `wc -c`)
+• Display the character count for each tweet
+
+Format your response as:
+1. [Tweet text] ([X] characters)
+2. [Tweet text] ([X] characters)
+3. [Tweet text] ([X] characters)
+4. [Tweet text] ([X] characters)
+5. [Tweet text] ([X] characters)
+
+Ensure all tweets meet the character limit before displaying.
+
+Note: Display the tweet options in chat only. Do not write to any file.
