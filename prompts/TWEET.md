@@ -2,7 +2,8 @@ Generate 5 engaging and exciting tweet options based on the user's description. 
 
 • Be exciting and attention-grabbing
 • End with a question to engage readers
-• Be between 190-210 characters (verify using `wc -m` or `wc -c`)
+• Be between 190-210 characters
+• Use `wc -c` to verify character count for each tweet
 • Display the character count for each tweet
 
 Format your response as:
