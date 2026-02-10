@@ -23,4 +23,23 @@ EXAMPLE PATTERNS:
 - "3 things nobody tells you about..."
 - "Most people get X wrong. Here's the fix..."
 
+EXAMPLE OUTPUT:
+**Stop coding alone. The future is AI teams.**
+
+I tested Claude Code's new Agent Teams feature with 3 AI agents collaborating on a coding challenge. What happened blew my mind.
+
+The agents didn't just split the work. They:
+
+• Challenged each other's approaches in real-time
+• Debated different solutions openly
+• Produced better code than any single agent ever could
+
+I watched everything unfold across tmux split panes which gave total transparency into their thought processes and arguments.
+
+Hours of work compressed into minutes, with the quality you only get from actual collaboration.
+
+**Question:** Would you trust multiple AI agents working together on your code? 
+
+#AI #Tech #AgentTeams #Coding #Productivity
+
 OUTPUT: Complete LinkedIn post ready to copy/paste
