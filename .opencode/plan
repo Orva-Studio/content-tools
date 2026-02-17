@@ -1,0 +1,935 @@
+# Implementation Plan: Virtual Mic Delay - Bun/TypeScript CLI
+
+## Overview
+Convert `virtual_mic_delay.py` to a pure TypeScript Bun CLI tool with automatic delay detection, cross-platform support (Mac/Linux), and pre-built binaries.
+
+---
+
+## Phase 1: Project Setup & Dependencies
+
+### 1.1 Initialize Bun Project
+```bash
+# Create new TypeScript project
+cd /Users/robray/content-tools/scripts
+mkdir virtual-mic-delay-ts && cd virtual-mic-delay-ts
+bun init -y
+bun add -d @types/node typescript
+
+# Create package.json
+```
+
+### 1.2 Key Dependencies
+```json
+{
+  "dependencies": {
+    "ffi-napi": "^4.0.3",              // For native library bindings
+    "ref-napi": "^3.0.3",              // FFI support
+    "ref-struct-napi": "^1.1.1",        // Struct handling for FFI
+    "fft-js": "^0.0.11",                // FFT for cross-correlation
+    "commander": "^11.1.0",              // CLI argument parsing
+    "chalk": "^5.3.0",                  // Terminal colors
+    "cliui": "^8.0.1"                  // CLI formatting
+    "ora": "^8.0.1",                    // Spinners/loading
+    "inquirer": "^9.2.12"               // Interactive prompts
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}
+```
+
+### 1.3 Platform-Specific Native Libraries
+Create native binding layers:
+- **macOS**: CoreAudio via `ffi-napi` to `libAudioToolbox`
+- **Linux**: PulseAudio via `ffi-napi` to `libpulse-simple`
+
+---
+
+## Phase 2: Core Audio Engine Architecture
+
+### 2.1 Define Audio Engine Interface
+```typescript
+// src/audio/AudioEngine.ts
+interface AudioDevice {
+  id: number;
+  name: string;
+  channels: number;
+  isInput: boolean;
+  isOutput: boolean;
+  isVirtual: boolean;
+}
+
+interface AudioConfig {
+  sampleRate: number;
+  bufferSize: number;
+  channels: number;
+}
+
+abstract class AudioEngine {
+  abstract getDevices(): Promise<AudioDevice[]>;
+  abstract openInputStream(deviceId: number): Promise<ReadableStream<Float32Array>>;
+  abstract openOutputStream(deviceId: number): Promise<WritableStream<Float32Array>>;
+  abstract close(): void;
+
+  // Platform-specific initialization
+  static create(): AudioEngine;
+}
+```
+
+### 2.2 macOS Implementation
+```typescript
+// src/audio/MacAudioEngine.ts
+class MacAudioEngine extends AudioEngine {
+  private audioUnit: unknown;  // FFI handle to AudioUnit
+
+  async getDevices(): Promise<AudioDevice[]> {
+    // Use FFI to call CoreAudio APIs:
+    // - AudioObjectGetPropertyData
+    // - kAudioHardwarePropertyDevices
+    // - kAudioDevicePropertyDeviceUID
+    // Filter for virtual devices (BlackHole, etc.)
+  }
+
+  async openInputStream(deviceId: number): Promise<ReadableStream<Float32Array>> {
+    // Configure AUHAL input unit
+    // Set device property
+    // Enable input scope
+  }
+}
+```
+
+### 2.3 Linux Implementation
+```typescript
+// src/audio/LinuxAudioEngine.ts
+class LinuxAudioEngine extends AudioEngine {
+  private pulseContext: unknown;  // FFI handle to pa_simple
+
+  async getDevices(): Promise<AudioDevice[]> {
+    // Use FFI to call PulseAudio APIs:
+    // - pa_context_get_sink_info_list
+    // - pa_context_get_source_info_list
+    // Filter for virtual devices (PulseAudio sinks)
+  }
+}
+```
+
+### 2.4 Platform Detection Factory
+```typescript
+// src/audio/index.ts
+import { platform } from "node:os";
+
+export function createAudioEngine(): AudioEngine {
+  if (platform() === "darwin") {
+    return new MacAudioEngine();
+  } else if (platform() === "linux") {
+    return new LinuxAudioEngine();
+  } else {
+    throw new Error(`Unsupported platform: ${platform()}`);
+  }
+}
+```
+
+---
+
+## Phase 3: Delay Detection System
+
+### 3.1 Cross-Correlation Algorithm
+```typescript
+// src/delay/DelayDetector.ts
+export class DelayDetector {
+  // FFT-based cross-correlation for time delay calculation
+  static calculateDelay(
+    signalA: Float32Array,
+    signalB: Float32Array,
+    sampleRate: number
+  ): number {
+    // 1. Compute FFT of both signals
+    // 2. Multiply in frequency domain
+    // 3. Inverse FFT to get cross-correlation
+    // 4. Find peak location -> delay in samples
+    // 5. Convert to milliseconds
+    // Return delay in ms
+  }
+
+  static findBestMatchDelay(
+    reference: Float32Array,
+    candidate: Float32Array,
+    sampleRate: number,
+    searchRangeMs: number = 500
+  ): number | null {
+    // Search within reasonable range (e.g., 0-500ms)
+    // Return delay if confidence > threshold
+  }
+}
+```
+
+### 3.2 Test Tone Generator
+```typescript
+// src/delay/TestTone.ts
+export class TestToneGenerator {
+  static generateSineWave(
+    frequency: number = 1000,
+    duration: number = 2,
+    sampleRate: number = 44100
+  ): Float32Array {
+    // Generate clean 1kHz sine wave (easy to detect)
+    // Include markers (tone bursts) for precise timing
+  }
+
+  static playTone(
+    audio: Float32Array,
+    outputDevice: AudioDevice,
+    engine: AudioEngine
+  ): Promise<void> {
+    // Play test tone through output device
+    // Simultaneously record from both input devices
+  }
+}
+```
+
+### 3.3 Dual Recording Handler
+```typescript
+// src/delay/DualRecorder.ts
+export class DualRecorder {
+  async recordSimultaneously(
+    device1: number,
+    device2: number,
+    duration: number,
+    engine: AudioEngine
+  ): Promise<{
+    recording1: Float32Array;
+    recording2: Float32Array;
+  }> {
+    // Open input streams for both devices
+    // Record for specified duration
+    // Return aligned recordings
+  }
+}
+```
+
+### 3.4 Delay Detection Workflow
+```typescript
+// src/delay/index.ts
+export async function detectDelay(
+  outputDevice: AudioDevice,
+  input1: AudioDevice,  // Camera mic
+  input2: AudioDevice,  // Computer mic
+  engine: AudioEngine
+): Promise<number> {
+  // 1. Generate test tone (1kHz sine wave with markers)
+  // 2. Play through output device
+  // 3. Record from both input devices simultaneously
+  // 4. Use cross-correlation to find delay
+  // 5. Return delay in milliseconds
+}
+```
+
+---
+
+## Phase 4: Virtual Microphone Core
+
+### 4.1 VirtualMicrophone Class
+```typescript
+// src/virtual-mic/VirtualMicrophone.ts
+export class VirtualMicrophone {
+  private delayMs: number;
+  private delayBuffer: Float32Array;
+  private bufferIndex: number = 0;
+  private inputDevice: number;
+  private outputDevice: number;
+  private isRunning: boolean = false;
+  private engine: AudioEngine;
+
+  constructor(
+    delayMs: number,
+    inputDevice: number,
+    outputDevice: number,
+    engine: AudioEngine
+  ) {
+    this.delayMs = delayMs;
+    this.engine = engine;
+    // Calculate buffer size: delayMs * sampleRate / 1000
+    this.delayBuffer = new Float32Array(bufferSize);
+  }
+
+  async start(): Promise<void> {
+    const inputStream = await this.engine.openInputStream(this.inputDevice);
+    const outputStream = await this.engine.openOutputStream(this.outputDevice);
+
+    this.isRunning = true;
+
+    // Process audio in real-time loop
+    for await (const chunk of inputStream) {
+      if (!this.isRunning) break;
+
+      // Add to delay buffer
+      const outputChunk = this.processChunk(chunk);
+      await outputStream.write(outputChunk);
+    }
+  }
+
+  private processChunk(input: Float32Array): Float32Array {
+    const output = new Float32Array(input.length);
+
+    for (let i = 0; i < input.length; i++) {
+      // Add to circular buffer
+      this.delayBuffer[this.bufferIndex] = input[i];
+
+      // Read from buffer (delayed)
+      const readIndex = (this.bufferIndex - this.delaySamples + this.bufferSize) % this.bufferSize;
+      output[i] = this.delayBuffer[readIndex];
+
+      this.bufferIndex = (this.bufferIndex + 1) % this.bufferSize;
+    }
+
+    return output;
+  }
+
+  stop(): void {
+    this.isRunning = false;
+    this.engine.close();
+  }
+}
+```
+
+### 4.2 Device Monitoring
+```typescript
+// src/virtual-mic/DeviceMonitor.ts
+export class DeviceMonitor {
+  private checkInterval: number = 2000;  // Check every 2s
+
+  async monitor(
+    deviceId: number,
+    engine: AudioEngine,
+    onDisconnect: () => void
+  ): Promise<void> {
+    // Poll device availability
+    // Show macOS alert on disconnect (use subprocess with osascript)
+  }
+}
+```
+
+---
+
+## Phase 5: CLI Interface
+
+### 5.1 CLI Structure
+```typescript
+// src/cli.ts
+import { Command } from "commander";
+import chalk from "chalk";
+import ora from "ora";
+import inquirer from "inquirer";
+
+const program = new Command();
+
+program
+  .name("virtual-mic-delay")
+  .description("Virtual microphone with audio delay for screen recording")
+  .version("1.0.0");
+
+// Main command
+program
+  .option("-d, --delay <ms>", "Delay in milliseconds", "150")
+  .option("-i, --input-device <id>", "Input device ID (physical microphone)")
+  .option("-o, --output-device <id>", "Output device ID (virtual audio device)")
+  .option("-r, --rate <hz>", "Sample rate in Hz", "44100")
+  .option("-b, --buffer <size>", "Buffer size", "1024")
+  .option("--auto-detect", "Auto-detect virtual audio devices")
+  .option("--detect-delay", "Run automatic delay detection")
+  .option("--list-devices", "List available audio devices")
+  .option("--verbose", "Verbose output")
+  .action(async (options) => {
+    await main(options);
+  });
+
+program.parse(process.argv);
+```
+
+### 5.2 Main Execution Flow
+```typescript
+// src/index.ts
+async function main(options: CLIOptions): Promise<void> {
+  const engine = createAudioEngine();
+
+  // List devices mode
+  if (options.listDevices) {
+    await listDevices(engine);
+    return;
+  }
+
+  // Get devices
+  let inputDevice = options.inputDevice;
+  let outputDevice = options.outputDevice;
+
+  if (options.autoDetect) {
+    outputDevice = await findVirtualDevice(engine);
+  }
+
+  if (inputDevice === undefined) {
+    inputDevice = await selectInputDevice(engine);
+  }
+
+  // Detect delay if requested
+  let delayMs = parseInt(options.delay);
+  if (options.detectDelay) {
+    const spinner = ora("Detecting delay...").start();
+
+    const cameraMicId = await selectDevice(engine, "Select camera microphone:");
+    const computerMicId = await selectDevice(engine, "Select computer microphone:");
+
+    delayMs = await detectDelay(
+      outputDevice!,
+      { id: cameraMicId },
+      { id: computerMicId },
+      engine
+    );
+
+    spinner.succeed(`Detected delay: ${delayMs}ms`);
+
+    // Ask to apply
+    const { apply } = await inquirer.prompt([
+        {
+        type: "confirm",
+        name: "apply",
+        message: "Apply this delay?",
+        default: true
+        }
+    ]);
+
+    if (!apply) process.exit(0);
+  }
+
+  // Start virtual microphone
+  const virtualMic = new VirtualMicrophone(
+    delayMs,
+    inputDevice!,
+    outputDevice!,
+    engine
+  );
+
+  await virtualMic.start();
+}
+```
+
+### 5.3 Device Selection UI
+```typescript
+// src/cli/devices.ts
+export async function listDevices(engine: AudioEngine): Promise<void> {
+  const devices = await engine.getDevices();
+
+  console.log(chalk.bold("Available Audio Devices:"));
+  console.log(chalk.gray("=".repeat(60)));
+
+  const inputDevices = devices.filter(d => d.isInput && !d.isVirtual);
+  const virtualDevices = devices.filter(d => d.isOutput && d.isVirtual);
+
+  // Display with formatting (alternating bold)
+  inputDevices.forEach((device, i) => {
+    const line = `${i + 1}: ${device.name}`;
+    console.log(i % 2 === 0 ? line : chalk.bold(line));
+  });
+
+  // ...
+}
+
+export async function selectInputDevice(engine: AudioEngine): Promise<number> {
+  const devices = await engine.getDevices();
+  const inputDevices = devices.filter(d => d.isInput && !d.isVirtual);
+
+  const { deviceId } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "deviceId",
+      message: "Select input device (physical microphone):",
+      choices: inputDevices.map(d => ({
+        name: `${d.name} (IN:${d.channels})`,
+        value: d.id
+      }))
+    }
+  ]);
+
+  return deviceId;
+}
+```
+
+### 5.4 macOS Alerts
+```typescript
+// src/cli/alerts.ts
+export async function showMacOSAlert(
+  title: string,
+  message: string,
+  type: "warning" | "error" | "info" = "warning"
+): Promise<boolean> {
+  if (process.platform !== "darwin") return false;
+
+  const iconMap = {
+    warning: "caution",
+    error: "stop",
+    info: "note"
+  };
+
+  const script = `
+    tell application "System Events"
+      display dialog "${message}" with title "${title}" buttons {"OK"} default button "OK" with icon ${iconMap[type]}
+    end tell
+  `;
+
+  const process = Bun.spawn(["osascript", "-e", script]);
+  await process.exited;
+
+  return true;
+}
+```
+
+---
+
+## Phase 6: Native Bindings Implementation
+
+### 6.1 macOS CoreAudio Bindings
+```typescript
+// src/native/mac/CoreAudio.ts
+import { FFI, Library } from "ffi-napi";
+
+const lib = Library.open("/System/Library/Frameworks/CoreAudio.framework/CoreAudio", {
+  AudioObjectGetPropertyData: ["int32", "pointer", "pointer", "pointer", "pointer", "pointer", "pointer"],
+  AudioObjectSetPropertyData: ["int32", "pointer", "pointer", "pointer", "uint32", "pointer", "pointer"],
+  // ... other CoreAudio functions
+});
+
+export const CoreAudio = {
+  // Constants
+  kAudioHardwarePropertyDevices: "hwcd",
+  kAudioObjectPropertyScopeInput: "in  ",
+  kAudioObjectPropertyScopeOutput: "out ",
+
+  // Functions
+  getDeviceCount: (): number => {
+    const ptr = Buffer.alloc(8);
+    // ... FFI call
+    return result;
+  },
+
+  getDeviceInfo: (deviceId: number): AudioDevice => {
+    // ... FFI calls to get device name, channels, etc.
+  }
+};
+```
+
+### 6.2 Linux PulseAudio Bindings
+```typescript
+// src/native/linux/PulseAudio.ts
+const lib = Library.open("libpulse-simple.so.0", {
+  pa_simple_new: ["pointer", "pointer", "string", "int32", "pointer", "pointer", "pointer", "pointer"],
+  pa_simple_write: ["pointer", "pointer", "int32", "pointer"],
+  pa_simple_read: ["pointer", "pointer", "int32", "pointer"],
+  pa_simple_free: ["pointer"],
+  // ... other PulseAudio functions
+});
+
+export const PulseAudio = {
+  openStream: (device: string, direction: "playback" | "record") => {
+    // ... FFI call
+  },
+
+  write: (stream, buffer, length) => {
+    // ... FFI call
+  }
+};
+```
+
+---
+
+## Phase 7: Build & Distribution
+
+### 7.1 Build Configuration
+```typescript
+// build.ts
+import { Bun } from "bun";
+
+async function build() {
+  // Build for macOS (arm64)
+  await Bun.build({
+    entrypoints: ["./src/cli.ts"],
+    compile: {
+      target: "bun-darwin-arm64",
+      outfile: "./dist/virtual-mic-delay-mac-arm64",
+    },
+    define: {
+      PLATFORM: '"darwin"',
+      BUILD_TIME: JSON.stringify(new Date().toISOString())
+    },
+    minify: true,
+    sourcemap: "linked",
+    bytecode: true
+  });
+
+  // Build for macOS (x64)
+  await Bun.build({
+    entrypoints: ["./src/cli.ts"],
+    compile: {
+      target: "bun-darwin-x64",
+      outfile: "./dist/virtual-mic-delay-mac-x64",
+    },
+    minify: true
+  });
+
+  // Build for Linux (x64)
+  await Bun.build({
+    entrypoints: ["./src/cli.ts"],
+    compile: {
+      target: "bun-linux-x64",
+      outfile: "./dist/virtual-mic-delay-linux-x64",
+    },
+    minify: true
+  });
+
+  // Build for Linux (arm64)
+  await Bun.build({
+    entrypoints: ["./src/cli.ts"],
+    compile: {
+      target: "bun-linux-arm64",
+      outfile: "./dist/virtual-mic-delay-linux-arm64",
+    },
+    minify: true
+  });
+}
+
+build();
+```
+
+### 7.2 Build Scripts
+```json
+{
+  "scripts": {
+    "build": "bun run build.ts",
+    "build:mac": "bun build --compile --target=bun-darwin-arm64 src/cli.ts --outfile dist/virtual-mic-delay",
+    "dev": "bun run src/cli.ts",
+    "test": "bun test"
+  }
+}
+```
+
+### 7.3 Distribution Package
+```bash
+#!/bin/bash
+# scripts/build-all.sh
+
+# Build for all platforms
+bun run build
+
+# Create release directory
+mkdir -p releases
+
+# Package binaries
+cd dist
+for binary in virtual-mic-delay-*; do
+  chmod +x "$binary"
+  tar -czf "../releases/$binary.tar.gz" "$binary"
+done
+
+# Generate checksums
+cd ../releases
+sha256sum *.tar.gz > checksums.txt
+```
+
+---
+
+## Phase 8: Testing & Validation
+
+### 8.1 Unit Tests
+```typescript
+// tests/delay-detector.test.ts
+import { describe, test, expect } from "bun:test";
+import { DelayDetector } from "../src/delay/DelayDetector";
+
+describe("DelayDetector", () => {
+  test("calculates delay correctly", () => {
+    const signal1 = generateTestSignal();
+    const signal2 = shiftSignal(signal1, 100);  // 100ms delay
+    const sampleRate = 44100;
+
+    const delay = DelayDetector.calculateDelay(signal1, signal2, sampleRate);
+    expect(delay).toBeCloseTo(100, 10);  // ±10ms tolerance
+  });
+});
+```
+
+### 8.2 Integration Tests
+```typescript
+// tests/integration.test.ts
+describe("VirtualMicrophone Integration", () => {
+  test("creates delayed audio stream", async () => {
+    const engine = createAudioEngine();
+    const devices = await engine.getDevices();
+
+    const virtualMic = new VirtualMicrophone(
+      150,  // 150ms delay
+      devices[0].id,
+      devices[1].id,
+      engine
+    );
+
+    await virtualMic.start();
+    // ... verify output is delayed
+    virtualMic.stop();
+  });
+});
+```
+
+### 8.3 Manual Testing Checklist
+- [ ] List devices on macOS (Intel + Apple Silicon)
+- [ ] List devices on Linux (Ubuntu, Debian)
+- [ ] Auto-detect virtual devices (BlackHole, PulseAudio sink)
+- [ ] Manual delay detection with test tone
+- [ ] Virtual microphone streaming with 150ms delay
+- [ ] Device disconnect detection and alerts
+- [ ] Interactive mode works correctly
+- [ ] CLI flags work as expected
+- [ ] Compiled binaries run without dependencies
+
+---
+
+## Phase 9: Documentation
+
+### 9.1 README
+```markdown
+# Virtual Mic Delay - Bun/TypeScript CLI
+
+## Installation
+
+### Download Pre-built Binary
+```bash
+# macOS (Apple Silicon)
+curl -LO https://github.com/user/content-tools/releases/latest/download/virtual-mic-delay-mac-arm64
+chmod +x virtual-mic-delay-mac-arm64
+./virtual-mic-delay-mac-arm64 --help
+
+# Linux (x64)
+curl -LO https://github.com/user/content-tools/releases/latest/download/virtual-mic-delay-linux-x64
+chmod +x virtual-mic-delay-linux-x64
+./virtual-mic-delay-linux-x64 --help
+```
+
+### Build from Source
+```bash
+git clone https://github.com/user/content-tools.git
+cd content-tools/scripts/virtual-mic-delay-ts
+bun install
+bun run build
+```
+
+## Prerequisites
+
+### macOS
+- macOS 11.0+
+- BlackHole virtual audio driver: `brew install blackhole-2ch`
+
+### Linux
+- PulseAudio (usually installed by default)
+- Or JACK audio server
+
+## Usage
+
+### Automatic Delay Detection
+```bash
+# Automatically detect delay between two microphones
+./virtual-mic-delay --detect-delay
+```
+
+This will:
+1. Ask you to select camera microphone
+2. Ask you to select computer microphone
+3. Play test tone through virtual device
+4. Record from both mics simultaneously
+5. Calculate delay using cross-correlation
+6. Suggest and apply delay value
+
+### Manual Configuration
+```bash
+# List available devices
+./virtual-mic-delay --list-devices
+
+# Start with specific delay
+./virtual-mic-delay --delay 150 --auto-detect
+
+# Full configuration
+./virtual-mic-delay \
+  --input-device 4 \
+  --output-device 8 \
+  --delay 200 \
+  --rate 44100 \
+  --buffer 1024
+```
+
+## CLI Options
+```
+Usage: virtual-mic-delay [options]
+
+Options:
+  -d, --delay <ms>        Delay in milliseconds (default: 150)
+  -i, --input-device <id>  Input device ID (physical microphone)
+  -o, --output-device <id> Output device ID (virtual audio device)
+  -r, --rate <hz>         Sample rate in Hz (default: 44100)
+  -b, --buffer <size>      Buffer size (default: 1024)
+  --auto-detect              Auto-detect virtual audio devices
+  --detect-delay             Run automatic delay detection
+  --list-devices            List available audio devices
+  --verbose                 Verbose output
+  -h, --help               Display help
+  -V, --version            Display version
+```
+
+## Examples
+
+### Quick Start with Camtasia
+```bash
+# 1. Install BlackHole (macOS) or PulseAudio (Linux)
+# 2. Run auto-detect to find virtual device
+./virtual-mic-delay --auto-detect
+
+# 3. In Camtasia, select the virtual device as microphone
+# 4. Start recording
+```
+
+### Detect Delay Between Camera Mic and Laptop Mic
+```bash
+./virtual-mic-delay --detect-delay
+# Follow prompts to select microphones
+# Tool will automatically calculate and apply delay
+```
+
+### Custom Delay for OBS
+```bash
+# OBS typically needs 200-300ms delay
+./virtual-mic-delay --delay 250 --auto-detect
+```
+
+## Troubleshooting
+
+### No audio devices found
+- Ensure virtual audio driver is installed (BlackHole/PulseAudio)
+- Check audio permissions: `System Preferences > Security > Microphone`
+- Restart audio server: Linux: `pulseaudio -k && pulseaudio --start`
+
+### Delay detection fails
+- Ensure both microphones can hear the test tone
+- Check that output device (virtual) is connected to both inputs
+- Try in a quiet environment to reduce noise
+
+### Poor audio quality
+- Increase buffer size: `--buffer 2048`
+- Reduce CPU usage by closing other audio apps
+- Use higher sample rate: `--rate 48000`
+
+## Development
+
+```bash
+# Install dependencies
+bun install
+
+# Run in dev mode
+bun run dev
+
+# Build all platforms
+bun run build
+
+# Run tests
+bun test
+```
+```
+
+### 9.2 Virtual Mic Delay Documentation
+Update existing `virtual_mic_delay.md` with TypeScript/Bun equivalent usage.
+
+---
+
+## File Structure
+```
+scripts/virtual-mic-delay-ts/
+├── package.json
+├── tsconfig.json
+├── build.ts
+├── src/
+│   ├── cli.ts              # CLI entry point
+│   ├── index.ts           # Main execution
+│   ├── audio/
+│   │   ├── index.ts       # Audio engine factory
+│   │   ├── AudioEngine.ts # Abstract interface
+│   │   ├── MacAudioEngine.ts
+│   │   └── LinuxAudioEngine.ts
+│   ├── delay/
+│   │   ├── index.ts       # Delay detection workflow
+│   │   ├── DelayDetector.ts    # Cross-correlation algorithm
+│   │   ├── TestTone.ts        # Test tone generator
+│   │   └── DualRecorder.ts    # Dual recording handler
+│   ├── virtual-mic/
+│   │   ├── VirtualMicrophone.ts  # Core virtual mic class
+│   │   └── DeviceMonitor.ts      # Device monitoring
+│   ├── cli/
+│   │   ├── devices.ts        # Device selection UI
+│   │   └── alerts.ts        # macOS alerts
+│   └── native/
+│       ├── mac/
+│       │   └── CoreAudio.ts  # macOS FFI bindings
+│       └── linux/
+│           └── PulseAudio.ts   # Linux FFI bindings
+├── tests/
+│   ├── delay-detector.test.ts
+│   └── integration.test.ts
+├── dist/                   # Compiled binaries
+└── releases/               # Release packages
+```
+
+---
+
+## Implementation Timeline Estimate
+
+- **Phase 1-2**: 2-3 days (Project setup + Audio engine)
+- **Phase 3**: 2 days (Delay detection system)
+- **Phase 4**: 1-2 days (Virtual microphone core)
+- **Phase 5**: 2 days (CLI interface)
+- **Phase 6**: 3-4 days (Native bindings - most complex)
+- **Phase 7**: 1 day (Build & distribution)
+- **Phase 8**: 1-2 days (Testing & validation)
+- **Phase 9**: 1 day (Documentation)
+
+**Total**: 13-17 days
+
+---
+
+## Known Challenges & Mitigations
+
+1. **FFI Complexity**: Native bindings for CoreAudio/PulseAudio are complex
+   - *Mitigation*: Start with minimal bindings, expand as needed
+   - Use reference code from Python's PyAudio
+
+2. **Real-time Latency**: Bun's event loop might introduce jitter
+   - *Mitigation*: Use Web Workers for audio processing
+   - Profile and optimize critical paths
+
+3. **Cross-Platform Build**: Building on Mac for Linux
+   - *Mitigation*: Use GitHub Actions CI/CD for cross-compilation
+   - Test on both platforms frequently
+
+4. **Test Tone Detection**: Noise interference in real environments
+   - *Mitigation*: Use multiple tone bursts with silence
+   - Implement confidence threshold for detection
+
+5. **Binary Size**: Bun binaries are large (50-100MB)
+   - *Mitigation*: Use `--minify`, `--bytecode`, `--asset-naming`
+   - Consider dynamic loading of native libraries if size is critical
+
+---
+
+## Success Criteria
+
+✅ Single-file executable for Mac (x64 + arm64) and Linux (x64 + arm64)
+✅ Automatic delay detection via test tone + cross-correlation
+✅ All original Python features (delay, virtual mic, device monitoring)
+✅ Interactive CLI with device selection
+✅ All CLI flags from Python version
+✅ Native audio APIs (CoreAudio/PulseAudio) for low latency
+✅ macOS alerts on device disconnect
+✅ Pre-built binaries ready for download
+✅ Comprehensive documentation and examples
